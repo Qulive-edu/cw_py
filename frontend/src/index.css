@@ -1,3 +1,56 @@
+.register-form {
+  max-width: 450px;
+}
+
+.register-form .form-footer {
+  text-align: center;
+  margin-top: 1rem;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.register-form .form-footer a {
+  color: #4c6ef5;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.register-form .form-footer a:hover {
+  text-decoration: underline;
+}
+
+.register-form .error {
+  color: #e53e3e;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  color: #1a1a2e;
+}
+img, video { max-width: 100%; height: auto; }
+button, input, textarea { font: inherit; }
+
+/* Адаптивность для форм */
+@media (max-width: 640px) {
+  .form-row { grid-template-columns: 1fr; }
+  .account-form { padding: 1rem; }
+}
+
+/* Адаптивная таблица */
+@media (max-width: 768px) {
+  table { display: block; overflow-x: auto; }
+  th, td { white-space: nowrap; }
+}
+
 /* ===== Layout ===== */
 .app-layout {
   display: flex;

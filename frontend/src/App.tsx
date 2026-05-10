@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';  // ← импорт
 import AccountList from '@/components/AccountList';
 import EmailList from '@/components/EmailList';
 import ComposeEmail from '@/components/ComposeEmail';
+import Register from '@/components/Register';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -16,6 +17,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/register" element={<Register />} />
       <Route path="/login" element={<Login />} />
       
       <Route path="/" element={

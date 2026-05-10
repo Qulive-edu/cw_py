@@ -1,10 +1,33 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny  # ← добавьте AllowAny
+from django.contrib.auth.models import User  # type: ignore[var-annotated]
 from .models import MailAccount, EmailMessage
-from .serializers import MailAccountSerializer, EmailMessageSerializer
+from .serializers import MailAccountSerializer, EmailMessageSerializer, RegisterSerializer  # ← импортируйте
 from .tasks import sync_account_task, send_email_task
+
+class RegisterView(generics.CreateAPIView):
+    """Регистрация нового пользователя"""
+    queryset = User.objects.all()
+    serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]  # ← доступно без авторизации
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        # Опционально: автоматически авторизовать пользователя после регистрации
+        # from rest_framework.authtoken.models import Token
+        # token, _ = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "message": "Регистрация успешна"
+        }, status=status.HTTP_201_CREATED)
 
 class MailAccountViewSet(viewsets.ModelViewSet):
     serializer_class = MailAccountSerializer

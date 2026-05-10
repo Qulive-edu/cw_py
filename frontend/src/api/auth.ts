@@ -1,8 +1,17 @@
 import api from './client';
 
 export const authApi = {
+  register: async (username: string, email: string, password: string, password_confirm: string) => {
+    const response = await api.post('/auth/register/', {
+      username,
+      email,
+      password,
+      password_confirm,
+    });
+    return response.data;
+  },
+
   login: async (username: string, password: string) => {
-    // Django REST Framework session auth - используем стандартный login
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
@@ -10,7 +19,6 @@ export const authApi = {
     await api.post('/auth/login/', formData, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
-    // После успешного входа сохраняем флаг
     localStorage.setItem('is_authenticated', 'true');
   },
 
