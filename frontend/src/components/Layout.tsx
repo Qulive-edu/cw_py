@@ -89,6 +89,9 @@ export default function Layout() {
 
         {/* Main Content */}
         <main className="app-main">
+          <div style={{ padding: '20px', background: '#ffeb3b' }}>
+            🟡 Layout rendered
+          </div>
           <Outlet />
         </main>
       </div>

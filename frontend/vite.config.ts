@@ -1,3 +1,4 @@
+// frontend/vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -10,18 +11,31 @@ export default defineConfig({
     },
   },
   server: {
-    host: '0.0.0.0',        // ← Слушать все интерфейсы
+    host: '0.0.0.0',
     port: 3000,
-    strictPort: true,       // ← Ошибка, если порт занят
+    strictPort: true,
     hmr: {
-      host: 'localhost',    // ← Браузер подключается к localhost
-      protocol: 'ws',       // или 'wss' если используете HTTPS
+      host: 'localhost',
+      protocol: 'ws',
     },
     watch: {
-      usePolling: true,     // ← Важно для Docker на Windows/WSL2
+      usePolling: true,
+    },
+    // 👇 ДОБАВЬТЕ ЭТО:
+    proxy: {
+      '/api': {
+        target: 'http://web:8000',  // имя сервиса из docker-compose
+        changeOrigin: true,
+        secure: false,
+        // Если Django требует CSRF:
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            // Можно добавить заголовки при необходимости
+          });
+        },
+      },
     },
   },
-  // Для production-сборки
   build: {
     outDir: 'dist',
     emptyOutDir: true,

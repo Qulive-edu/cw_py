@@ -12,10 +12,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    
     "paths": {
-      "@/*": ["./src/*"]  // ← обратите внимание на "./" в начале
-    }
+      "@/*": ["./src/*"]
+    },
+    "types": ["vite/client"]
   },
-  "include": ["src"]
+  "include": ["src", "src/**/*.ts", "src/**/*.tsx", "src/**/*.css", "src/**/*.d.ts"]
 }

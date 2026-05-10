@@ -17,22 +17,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const userData = await authApi.getCurrentUser();
-        setUser(userData);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (localStorage.getItem('is_authenticated')) {
-      checkAuth();
-    } else {
-      setLoading(false);
+  const checkAuth = async () => {
+    try {
+      const userData = await authApi.getCurrentUser();
+      setUser(userData);
+    } catch {
+      setUser(null); // ← важно!
+      localStorage.removeItem('is_authenticated'); // ← и это
+    } finally {
+      setLoading(false); // ← всегда сбрасываем
     }
-  }, []);
+  };
+  
+  if (localStorage.getItem('is_authenticated')) {
+    checkAuth();
+  } else {
+    setLoading(false); // ← если нет флага — сразу готово
+  }
+}, []);
 
   const login = async (username: string, password: string) => {
     await authApi.login(username, password);
