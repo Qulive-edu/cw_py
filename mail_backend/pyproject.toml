@@ -1,0 +1,27 @@
+[tool.mypy]
+python_version = "3.11"
+plugins = ["mypy_django_plugin.main"]
+warn_return_any = true
+warn_unused_configs = true
+show_error_codes = true
+
+[tool.django-stubs]
+django_settings_module = "mail_client.settings"
+
+[[tool.mypy.overrides]]
+module = [
+    "celery",
+    "celery.*",
+    "redis",
+    "redis.*",
+    "sqlalchemy",
+    "sqlalchemy.*",
+    "cryptography",
+    "cryptography.*",
+    "django_redis"
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["core.models"]
+disable_error_code = ["var-annotated"]
