@@ -8,7 +8,14 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = ['*']
 
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -29,7 +36,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
+MIDDLEWARE.insert(0, 'corsheaders.middleware.CorsMiddleware')
 ROOT_URLCONF = 'mail_client.urls'
 TEMPLATES = [
     {
@@ -95,3 +102,15 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+
+# ===== Static files (CSS, JavaScript, Images) =====
+# https://docs.djangoproject.com/en/4.2/howto/static-files/
+
+STATIC_URL = '/static/'
+
+# Для collectstatic в production
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# В production используйте ManifestStaticFilesStorage для кэширования
+if not DEBUG:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'

@@ -1,4 +1,67 @@
 services:
+  # ===== BACKEND SERVICES =====
+  
+  web:
+    build:
+      context: ./mail_backend  # ← Важно: путь к Django-приложению
+      dockerfile: Dockerfile
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./mail_backend:/app  # ← Монтируем именно mail_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=mail_client
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks:
+      - app-network
+
+  celery_worker:
+    build:
+      context: ./mail_backend
+      dockerfile: Dockerfile
+    command: celery -A mail_client worker --loglevel=info
+    volumes:
+      - ./mail_backend:/app
+    environment:
+      - DB_HOST=db
+      - DB_NAME=mail_client
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379/1
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks:
+      - app-network
+
+  celery_beat:
+    build:
+      context: ./mail_backend
+      dockerfile: Dockerfile
+    command: celery -A mail_client beat --loglevel=info
+    volumes:
+      - ./mail_backend:/app
+    environment:
+      - DB_HOST=db
+      - DB_NAME=mail_client
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379/2
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks:
+      - app-network
+
+  # ===== DATABASE & CACHE =====
+  
   db:
     image: postgres:15-alpine
     environment:
@@ -14,6 +77,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
   redis:
     image: redis:7-alpine
@@ -26,61 +91,46 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
-  web:
-    build: .
-    # Сначала миграции, потом запуск сервера
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+  # ===== FRONTEND: DEV MODE =====
+  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile  # ← Node.js для разработки
     volumes:
-      - .:/app  # Монтирование кода для live-reload
+      - ./frontend:/app
+      - /app/node_modules  # ← Не перезаписывать node_modules из хоста
     ports:
-      - "8000:8000"
+      - "3000:3000"
     environment:
-      - DB_HOST=db
-      - DB_NAME=mail_client
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_PORT=5432
-      - REDIS_URL=redis://redis:6379/0
+      - VITE_API_BASE_URL=http://web:8000/api  # ← Внутренний DNS Docker
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - web
+    networks:
+      - app-network
 
-  celery_worker:
-    build: .
-    command: celery -A mail_client worker --loglevel=info
+  # ===== NGINX: PROD MODE =====
+  
+  nginx:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod  # ← Multi-stage с nginx
+    ports:
+      - "80:80"
     volumes:
-      - .:/app
-    environment:
-      - DB_HOST=db
-      - DB_NAME=mail_client
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - REDIS_URL=redis://redis:6379/1
+      - ./frontend/dist:/usr/share/nginx/html:ro  # ← Сборка монтируется
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - web
+    networks:
+      - app-network
+    restart: unless-stopped
 
-  celery_beat:
-    build: .
-    command: celery -A mail_client beat --loglevel=info
-    volumes:
-      - .:/app
-    environment:
-      - DB_HOST=db
-      - DB_NAME=mail_client
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - REDIS_URL=redis://redis:6379/2
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:
