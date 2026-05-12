@@ -12,14 +12,13 @@ export const authApi = {
   },
 
   login: async (username: string, password: string) => {
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
-    
-    await api.post('/auth/login/', formData, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    // 🔥 Отправляем JSON, а не FormData!
+    const response = await api.post('/auth/login/', {
+      username,
+      password,
     });
     localStorage.setItem('is_authenticated', 'true');
+    return response.data;
   },
 
   logout: async () => {

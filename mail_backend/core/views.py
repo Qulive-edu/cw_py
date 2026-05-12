@@ -1,11 +1,70 @@
-from rest_framework import viewsets, status, generics
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny  # ← добавьте AllowAny
+from rest_framework import viewsets, status, generics # type: ignore[import-untyped]
+from rest_framework.decorators import action # type: ignore[import-untyped]
+from rest_framework.response import Response # type: ignore[import-untyped]
+from rest_framework.permissions import IsAuthenticated, AllowAny # type: ignore[import-untyped]
+from django.contrib.auth import authenticate, login, logout  # ← важно!
 from django.contrib.auth.models import User  # type: ignore[var-annotated]
 from .models import MailAccount, EmailMessage
-from .serializers import MailAccountSerializer, EmailMessageSerializer, RegisterSerializer  # ← импортируйте
+from .serializers import MailAccountSerializer, EmailMessageSerializer, RegisterSerializer
 from .tasks import sync_account_task, send_email_task
+
+class LoginView(generics.GenericAPIView):
+    """Вход по сессии (username + password)"""
+    
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        if not username or not password:
+            return Response(
+                {"detail": "Укажите username и password"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is None:
+            return Response(
+                {"detail": "Неверное имя пользователя или пароль"}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        login(request, user)  # ← создаёт сессию!
+        
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email
+        }, status=status.HTTP_200_OK)
+
+
+class LogoutView(generics.GenericAPIView):
+    """Выход из системы"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        logout(request)  # ← удаляет сессию!
+        return Response({"detail": "Выход выполнен"}, status=status.HTTP_200_OK)
+
+
+class UserView(generics.RetrieveAPIView):
+    """Получить данные текущего пользователя"""
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return User.objects.none()  # не используется, но требуется DRF
+    
+    def get_object(self):
+        return self.request.user  # ← возвращаем текущего юзера
+    
+    def get_serializer_class(self):
+        # Простой сериализатор "на лету"
+        from rest_framework import serializers
+        class UserSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = User
+                fields = ['id', 'username', 'email']
+        return UserSerializer
 
 class RegisterView(generics.CreateAPIView):
     """Регистрация нового пользователя"""
