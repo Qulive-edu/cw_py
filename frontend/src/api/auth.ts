@@ -1,34 +1,42 @@
+// frontend/src/api/auth.ts
 import api from './client';
+import { AuthResponse, RegisterData, LoginData, User } from '@/types';
 
 export const authApi = {
-  register: async (username: string, email: string, password: string, password_confirm: string) => {
-    const response = await api.post('/auth/register/', {
-      username,
-      email,
-      password,
-      password_confirm,
-    });
-    return response.data;
+  /** Регистрация нового пользователя */
+  register: async (data: RegisterData): Promise<AuthResponse> => {
+    const { data: response } = await api.post<AuthResponse>('/auth/register/', data);
+    if (response.token) {
+      localStorage.setItem('auth_token', response.token);
+      localStorage.setItem('is_authenticated', 'true');
+    }
+    return response;
   },
 
-  login: async (username: string, password: string) => {
-    // 🔥 Отправляем JSON, а не FormData!
-    const response = await api.post('/auth/login/', {
-      username,
-      password,
-    });
-    localStorage.setItem('is_authenticated', 'true');
-    return response.data;
+  /** Вход в систему */
+  login: async (data: LoginData): Promise<AuthResponse> => {
+    const { data: response } = await api.post<AuthResponse>('/auth/login/', data);
+    if (response.token) {
+      localStorage.setItem('auth_token', response.token);
+      localStorage.setItem('is_authenticated', 'true');
+    }
+    return response;
   },
 
-  logout: async () => {
-    await api.post('/auth/logout/');
-    localStorage.removeItem('is_authenticated');
+  /** Выход из системы */
+  logout: async (): Promise<void> => {
+    try {
+      await api.post('/auth/logout/');
+    } catch (e) {
+      // Игнорируем ошибки при выходе
+    }
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('is_authenticated');
   },
 
-  getCurrentUser: async () => {
-    const { data } = await api.get('/auth/user/');
+  /** Получение данных текущего пользователя */
+  getCurrentUser: async (): Promise<User> => {
+    const { data } = await api.get<User>('/auth/user/');
     return data;
   },
 };

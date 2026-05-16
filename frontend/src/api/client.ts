@@ -1,3 +1,4 @@
+// frontend/src/api/client.ts
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 const api: AxiosInstance = axios.create({
@@ -5,10 +6,11 @@ const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // для session auth
+  // 🔑 Для TokenAuth не нужны куки
+  withCredentials: false,
 });
 
-// Interceptor для добавления токена (если используете TokenAuthentication)
+// Interceptor для добавления токена
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
   if (token) {
@@ -23,6 +25,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('is_authenticated');
       window.location.href = '/login';
     }
     return Promise.reject(error);

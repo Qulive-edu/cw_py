@@ -1,6 +1,7 @@
+// frontend/src/components/Register.tsx
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authApi } from '@/api/auth';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -9,53 +10,35 @@ export default function Register() {
     password: '',
     password_confirm: '',
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const { register, error, clearError } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Очищаем ошибку при вводе
-    if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
+    if (error) clearError();
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setErrors({});
+    
+    // Простая валидация на клиенте
+    if (formData.password !== formData.password_confirm) {
+      alert('Пароли не совпадают');
+      return;
+    }
+    if (formData.password.length < 8) {
+      alert('Пароль должен содержать минимум 8 символов');
+      return;
+    }
 
+    setLoading(true);
     try {
-      await authApi.register(
-        formData.username,
-        formData.email,
-        formData.password,
-        formData.password_confirm
-      );
-      // После успешной регистрации — на страницу входа
-      navigate('/login', { state: { message: 'Регистрация успешна! Войдите в систему.' } });
-    } catch (err: any) {
-      const backendErrors = err.response?.data;
-      if (backendErrors) {
-        // Преобразуем ошибки DRF в удобный формат
-        const formatted: Record<string, string> = {};
-        Object.entries(backendErrors).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            formatted[key] = value[0];
-          } else if (typeof value === 'string') {
-            formatted[key] = value;
-          }
-        });
-        setErrors(formatted);
-      } else {
-        setErrors({ non_field_errors: 'Ошибка при регистрации. Попробуйте позже.' });
-      }
+      await register(formData);
+      navigate('/');
+    } catch {
+      // Ошибка уже обработана в useAuth
     } finally {
       setLoading(false);
     }
@@ -66,69 +49,64 @@ export default function Register() {
       <form onSubmit={handleSubmit} className="register-form">
         <h2>📝 Регистрация</h2>
         
-        {errors.non_field_errors && (
-          <div className="error-alert">{errors.non_field_errors}</div>
-        )}
-
+        {error && <p className="error">{error}</p>}
+        
         <div className="form-group">
-          <label>Имя пользователя</label>
+          <label>Имя пользователя *</label>
           <input
-            name="username"
             type="text"
-            placeholder="admin"
+            name="username"
+            placeholder="username"
             value={formData.username}
             onChange={handleChange}
             required
             minLength={3}
+            maxLength={150}
           />
-          {errors.username && <small className="error">{errors.username}</small>}
         </div>
 
         <div className="form-group">
-          <label>Email</label>
+          <label>Email *</label>
           <input
-            name="email"
             type="email"
+            name="email"
             placeholder="you@example.com"
             value={formData.email}
             onChange={handleChange}
             required
           />
-          {errors.email && <small className="error">{errors.email}</small>}
         </div>
 
         <div className="form-group">
-          <label>Пароль</label>
+          <label>Пароль *</label>
           <input
-            name="password"
             type="password"
-            placeholder="••••••••"
+            name="password"
+            placeholder="Минимум 8 символов"
             value={formData.password}
             onChange={handleChange}
             required
             minLength={8}
           />
-          {errors.password && <small className="error">{errors.password}</small>}
         </div>
 
         <div className="form-group">
-          <label>Подтвердите пароль</label>
+          <label>Подтвердите пароль *</label>
           <input
-            name="password_confirm"
             type="password"
-            placeholder="••••••••"
+            name="password_confirm"
+            placeholder="Повторите пароль"
             value={formData.password_confirm}
             onChange={handleChange}
             required
           />
-          {errors.password_confirm && <small className="error">{errors.password_confirm}</small>}
         </div>
 
         <button type="submit" disabled={loading} className="btn-primary">
           {loading ? 'Регистрация...' : 'Зарегистрироваться'}
         </button>
-        
-        <p className="form-footer">
+
+        <p className="switch-auth">
           Уже есть аккаунт? <Link to="/login">Войти</Link>
         </p>
       </form>

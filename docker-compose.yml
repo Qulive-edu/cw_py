@@ -3,24 +3,40 @@ services:
   
   web:
     build:
-      context: ./mail_backend  # ← Важно: путь к Django-приложению
+      context: ./mail_backend
       dockerfile: Dockerfile
     command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
-      - ./mail_backend:/app  # ← Монтируем именно mail_backend
+      - ./mail_backend:/app
     ports:
       - "8000:8000"
     environment:
+      # Django
+      - DJANGO_SECRET_KEY=your-secret-key-change-in-prod
+      - DJANGO_DEBUG=True
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,web,frontend
+      # Database
       - DB_HOST=db
       - DB_NAME=mail_client
       - DB_USER=postgres
       - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_CONN_MAX_AGE=600
+      - DB_CONN_HEALTH_CHECKS=True
+      # Redis
       - REDIS_URL=redis://redis:6379/0
+      - REDIS_MAX_CONNECTIONS=50
+      # Celery
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      # Cryptography
+      - FERNET_KEY=${FERNET_KEY:-}  # Задайте через .env или сгенерируйте
+      # CORS
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
-    networks:
-      - app-network
+    restart: unless-stopped
 
   celery_worker:
     build:
@@ -30,16 +46,25 @@ services:
     volumes:
       - ./mail_backend:/app
     environment:
+      # Database
       - DB_HOST=db
       - DB_NAME=mail_client
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-      - REDIS_URL=redis://redis:6379/1
+      - DB_PORT=5432
+      - DB_CONN_MAX_AGE=600
+      - DB_CONN_HEALTH_CHECKS=True
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+      # Celery
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      # Cryptography - ВАЖНО: тот же ключ, что и у web!
+      - FERNET_KEY=${FERNET_KEY:-}
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
-    networks:
-      - app-network
+    restart: unless-stopped
 
   celery_beat:
     build:
@@ -53,12 +78,14 @@ services:
       - DB_NAME=mail_client
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-      - REDIS_URL=redis://redis:6379/2
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - FERNET_KEY=${FERNET_KEY:-}
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
-    networks:
-      - app-network
+    restart: unless-stopped
 
   # ===== DATABASE & CACHE =====
   
@@ -77,8 +104,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - app-network
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -91,44 +117,33 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - app-network
+    restart: unless-stopped
 
   # ===== FRONTEND: DEV MODE =====
   
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile  # ← Node.js для разработки
+      dockerfile: Dockerfile
     volumes:
       - ./frontend:/app
-      - /app/node_modules  # ← Не перезаписывать node_modules из хоста
+      - /app/node_modules
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_BASE_URL=http://web:8000/api  # ← Внутренний DNS Docker
+      - VITE_API_BASE_URL=http://web:8000/api
     depends_on:
       - web
-    networks:
-      - app-network
+    restart: unless-stopped
 
   # ===== NGINX: PROD MODE =====
   
   nginx:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.prod  # ← Multi-stage с nginx
+      dockerfile: Dockerfile.prod
     ports:
       - "80:80"
-    depends_on:
-      - web
-    networks:
-      - app-network
-    restart: unless-stopped
-
-networks:
-  app-network:
-    driver: bridge
 
 volumes:
   postgres_data:

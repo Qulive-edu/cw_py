@@ -1,12 +1,12 @@
-// src/App.tsx
+// frontend/src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import Login from '@/components/Login';
-import Layout from '@/components/Layout';  // ← импорт
+import Register from '@/components/Register';  // ← импорт
+import Layout from '@/components/Layout';
 import AccountList from '@/components/AccountList';
 import EmailList from '@/components/EmailList';
 import ComposeEmail from '@/components/ComposeEmail';
-import Register from '@/components/Register';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -17,12 +17,14 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/register" element={<Register />} />
+      {/* Публичные маршруты */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />  // ← новый маршрут
       
+      {/* Защищённые маршруты */}
       <Route path="/" element={
         <PrivateRoute>
-          <Layout />  {/* ← Layout с Outlet внутри */}
+          <Layout />
         </PrivateRoute>
       }>
         <Route index element={<AccountList />} />
@@ -36,7 +38,6 @@ function AppRoutes() {
 }
 
 function App() {
-    console.log('✅ App component rendered')
   return (
     <AuthProvider>
       <BrowserRouter>
